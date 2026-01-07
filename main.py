@@ -1,48 +1,68 @@
+import sqlite3
 import hashlib
-import os
 
-def generate_folder_hashes(folder_path, block_size=65536):
-    """
-    Считает SHA-256 для всех .txt файлов в указанной папке.
-    Возвращает словарь с полными путями и хешами.
-    """
-    hashes = {}
+# Підключення до бази даних
+conn = sqlite3.connect("users.db")
+cursor = conn.cursor()
 
-    if not os.path.exists(folder_path):
-        print(f"Папка не найдена: {folder_path}")
-        return hashes
-
-    # Проходим по всем файлам в папке
-    for filename in os.listdir(folder_path):
-        if filename.endswith(".txt"):
-            full_path = os.path.join(folder_path, filename)
-            try:
-                sha256 = hashlib.sha256()
-                with open(full_path, 'rb') as f:
-                    while True:
-                        data = f.read(block_size)
-                        if not data:
-                            break
-                        sha256.update(data)
-                file_hash = sha256.hexdigest()
-                hashes[full_path] = file_hash
-                print(f"Обработан файл: {full_path}")
-            except IOError as e:
-                print(f"Ошибка чтения файла {full_path}: {e}")
-
-    return hashes
+# Створення таблиці
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    login TEXT PRIMARY KEY,
+    password TEXT NOT NULL,
+    full_name TEXT NOT NULL
+)
+""")
+conn.commit()
 
 
-if __name__ == "__main__":
-    # Путь к папке с твоими файлами
-    folder_path = r"C:\Python"
+# Хешування пароля
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
-    print("Обчисление SHA-256 хешей файлов...\n")
-    file_hashes = generate_folder_hashes(folder_path)
 
-    if file_hashes:
-        print("\nРезультаты хешей файлов:")
-        for path, h in file_hashes.items():
-            print(f"{path}: {h}")
+# Додавання ТВОГО користувача (Фролов Михайло)
+def add_default_user():
+    login = "frolov"
+    password = "12345"
+    full_name = "Фролов Михайло"
+
+    hashed_password = hash_password(password)
+
+    try:
+        cursor.execute(
+            "INSERT INTO users (login, password, full_name) VALUES (?, ?, ?)",
+            (login, hashed_password, full_name)
+        )
+        conn.commit()
+        print("Користувач Фролов Михайло доданий у БД")
+    except sqlite3.IntegrityError:
+        print("Користувач Фролов Михайло вже існує у БД")
+
+
+# Перевірка автентифікації
+def authenticate():
+    login = input("Введіть логін: ")
+    password = input("Введіть пароль: ")
+
+    hashed_password = hash_password(password)
+
+    cursor.execute(
+        "SELECT * FROM users WHERE login = ? AND password = ?",
+        (login, hashed_password)
+    )
+
+    user = cursor.fetchone()
+
+    if user:
+        print("Авторизація успішна")
+        print("Ласкаво просимо,", user[2])
     else:
-        print("Хеши не были рассчитаны ни для одного файла.")
+        print("Невірний логін або пароль")
+
+
+# Головна частина програми
+add_default_user()
+authenticate()
+
+conn.close()
