@@ -1,40 +1,48 @@
-sales = [
-    {"продукт": "Ноутбук", "кількість": 5, "ціна": 15000},
-    {"продукт": "Мишка", "кількість": 30, "ціна": 400},
-    {"продукт": "Клавіатура", "кількість": 20, "ціна": 800},
-    {"продукт": "Монітор", "кількість": 3, "ціна": 7000},
-    {"продукт": "Мишка", "кількість": 10, "ціна": 400}
-]
+import hashlib
+import os
 
-def calculate_income(sales_list):
-    income = {}
+def generate_folder_hashes(folder_path, block_size=65536):
+    """
+    Считает SHA-256 для всех .txt файлов в указанной папке.
+    Возвращает словарь с полными путями и хешами.
+    """
+    hashes = {}
 
-    for sale in sales_list:
-        product = sale["продукт"]
-        quantity = sale["кількість"]
-        price = sale["ціна"]
+    if not os.path.exists(folder_path):
+        print(f"Папка не найдена: {folder_path}")
+        return hashes
 
-        total = quantity * price
+    # Проходим по всем файлам в папке
+    for filename in os.listdir(folder_path):
+        if filename.endswith(".txt"):
+            full_path = os.path.join(folder_path, filename)
+            try:
+                sha256 = hashlib.sha256()
+                with open(full_path, 'rb') as f:
+                    while True:
+                        data = f.read(block_size)
+                        if not data:
+                            break
+                        sha256.update(data)
+                file_hash = sha256.hexdigest()
+                hashes[full_path] = file_hash
+                print(f"Обработан файл: {full_path}")
+            except IOError as e:
+                print(f"Ошибка чтения файла {full_path}: {e}")
 
-        if product in income:
-            income[product] += total
-        else:
-            income[product] = total
-
-    return income
+    return hashes
 
 
-total_income = calculate_income(sales)
+if __name__ == "__main__":
+    # Путь к папке с твоими файлами
+    folder_path = r"C:\Python"
 
-products_over_1000 = []
+    print("Обчисление SHA-256 хешей файлов...\n")
+    file_hashes = generate_folder_hashes(folder_path)
 
-for product, money in total_income.items():
-    if money > 1000:
-        products_over_1000.append(product)
-
-print("Загальний дохід по кожному продукту:")
-for product, money in total_income.items():
-    print(f"{product}: {money} грн")
-
-print("\nПродукти, що принесли дохід більше ніж 1000 грн:")
-print(products_over_1000)
+    if file_hashes:
+        print("\nРезультаты хешей файлов:")
+        for path, h in file_hashes.items():
+            print(f"{path}: {h}")
+    else:
+        print("Хеши не были рассчитаны ни для одного файла.")
